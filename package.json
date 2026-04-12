@@ -1,0 +1,52 @@
+{
+  "name": "@protectyr-labs/sse-lock",
+  "version": "0.1.0",
+  "description": "SSE streaming API routes with concurrency locking. For long-running LLM calls and analysis pipelines.",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0"
+  },
+  "keywords": [
+    "sse",
+    "server-sent-events",
+    "streaming",
+    "concurrency",
+    "lock",
+    "api",
+    "llm",
+    "typescript"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/protectyr-labs/sse-lock.git"
+  },
+  "author": "Protectyr Labs",
+  "engines": {
+    "node": ">=18"
+  }
+}
