@@ -1,130 +1,68 @@
-# @protectyr-labs/sse-lock
+# sse-lock
 
-SSE streaming API routes with concurrency locking. Zero dependencies.
+> Stream progress to the client. Prevent duplicate runs.
 
-## Why This Exists
+[![CI](https://github.com/protectyr-labs/sse-lock/actions/workflows/ci.yml/badge.svg)](https://github.com/protectyr-labs/sse-lock/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6.svg)](https://www.typescriptlang.org/)
 
-Long-running operations (LLM calls, document analysis, report generation) need two things that standard HTTP responses don't provide:
-
-1. **Progress streaming** — the client needs to know what's happening during a 30-second operation, not just get a result at the end.
-2. **Duplicate prevention** — if the user clicks "Analyze" twice, you don't want two parallel runs burning compute and producing conflicting results.
-
-This library gives you both in a single function call.
-
-```
-Client                          Server
-  |                               |
-  |--- POST /api/analyze -------->|
-  |                               |  acquire lock("doc-123")
-  |<-- data: {"progress":"..."}   |  ...working...
-  |<-- data: {"progress":"..."}   |  ...working...
-  |<-- data: {"complete":"..."}   |  release lock("doc-123")
-  |                               |
-  |--- POST /api/analyze -------->|
-  |                               |  lock held? yes
-  |<-- data: {"error":"in prog"}  |  reject immediately
-```
-
-## Install
+## Quick Start
 
 ```bash
 npm install @protectyr-labs/sse-lock
 ```
 
-## Quick Start
-
-### Next.js App Router (API Route)
-
 ```typescript
-// app/api/analyze/route.ts
 import { createSseStream, createInMemoryLockManager } from '@protectyr-labs/sse-lock';
 
 const lockManager = createInMemoryLockManager();
 
+// Next.js App Router example
 export async function POST(request: Request) {
   const { documentId } = await request.json();
-
   return createSseStream(
     async (send) => {
       send('progress', 'Parsing document...');
       const data = await parseDocument(documentId);
-
       send('progress', 'Running analysis...');
       const result = await analyzeData(data);
-
-      send('complete', 'Analysis finished', result);
+      send('complete', 'Done', result);
     },
     { lockManager, resourceId: documentId },
   );
 }
+// Second request while first is running => rejected immediately
 ```
 
-### Browser Client
+## Why This?
 
-```typescript
-const response = await fetch('/api/analyze', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ documentId: 'doc-123' }),
-});
+- **SSE over WebSocket** -- simpler protocol, works through proxies, no upgrade handshake
+- **Built-in concurrency lock** -- second request for the same resource is rejected, not queued
+- **Error auto-release** -- lock releases automatically if the handler throws
+- **LockManager interface** -- swap in Redis/Postgres for production; in-memory for dev
+- **Zero dependencies** -- pure TypeScript, works with any HTTP framework
 
-const reader = response.body!.getReader();
-const decoder = new TextDecoder();
+## How It Works
 
-while (true) {
-  const { done, value } = await reader.read();
-  if (done) break;
-
-  const text = decoder.decode(value);
-  for (const line of text.split('\n\n').filter(Boolean)) {
-    const event = JSON.parse(line.replace('data: ', ''));
-    console.log(`[${event.type}] ${event.message}`, event.result);
-  }
-}
 ```
-
-### Without Locking
-
-Pass `null` as the lock manager to use pure SSE streaming without concurrency control:
-
-```typescript
-return createSseStream(async (send) => {
-  send('progress', 'Working...');
-  send('complete', 'Done', { value: 42 });
-});
+Client                          Server
+  |--- POST /api/analyze -------->|  acquire lock("doc-123")
+  |<-- data: {"progress":"..."}   |  ...working...
+  |<-- data: {"complete":"..."}   |  release lock("doc-123")
+  |                               |
+  |--- POST /api/analyze -------->|  lock held? => reject
+  |<-- data: {"error":"in prog"}  |
 ```
 
 ## API
 
-### `createSseStream(handler, options?)`
+| Function | Purpose |
+|----------|---------|
+| `createSseStream(handler, opts?)` | Returns a `Response` with SSE headers and streaming body |
+| `formatEvent(type, message, result?)` | Format a single SSE event string |
+| `createInMemoryLockManager()` | In-memory lock for dev/testing |
 
-Creates a `Response` object with SSE headers and a readable stream.
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `handler` | `(send) => Promise<void>` | Async function that receives a `send` callback |
-| `options.lockManager` | `LockManager \| null` | Lock manager instance, or null to skip locking |
-| `options.resourceId` | `string` | Resource ID for locking (required if lockManager is set) |
-| `options.headers` | `Record<string, string>` | Additional response headers |
-
-The `send` callback signature: `(type: EventType, message: string, result?: unknown) => void`
-
-### `formatEvent(type, message, result?)`
-
-Formats a single SSE event string. Useful for building custom streaming logic.
-
-```typescript
-formatEvent('progress', 'Loading...');
-// => 'data: {"type":"progress","message":"Loading..."}\n\n'
-```
-
-### `createInMemoryLockManager()`
-
-Returns a `LockManager` backed by a `Map`. Good for development and testing. Not suitable for production (single-process, doesn't survive restarts).
-
-### `LockManager` Interface
-
-Implement this for your storage backend:
+### LockManager Interface
 
 ```typescript
 interface LockManager {
@@ -135,72 +73,27 @@ interface LockManager {
 }
 ```
 
-## Production Lock Manager
+### Without Locking
 
-Here's an example using a PostgreSQL table:
+Omit options to use pure SSE streaming with no concurrency control:
 
 ```typescript
-import type { LockManager } from '@protectyr-labs/sse-lock';
-import { pool } from './db';
-
-export function createPgLockManager(): LockManager {
-  return {
-    async isLocked(resourceId) {
-      const { rows } = await pool.query(
-        `SELECT 1 FROM analysis_locks WHERE resource_id = $1 AND locked = true`,
-        [resourceId],
-      );
-      return rows.length > 0;
-    },
-
-    async acquire(resourceId) {
-      try {
-        await pool.query(
-          `INSERT INTO analysis_locks (resource_id, locked, locked_at)
-           VALUES ($1, true, NOW())
-           ON CONFLICT (resource_id)
-           DO UPDATE SET locked = true, locked_at = NOW()
-           WHERE analysis_locks.locked = false`,
-          [resourceId],
-        );
-        const { rows } = await pool.query(
-          `SELECT locked_at FROM analysis_locks
-           WHERE resource_id = $1 AND locked = true
-           AND locked_at >= NOW() - INTERVAL '1 second'`,
-          [resourceId],
-        );
-        return rows.length > 0;
-      } catch {
-        return false;
-      }
-    },
-
-    async release(resourceId) {
-      await pool.query(
-        `UPDATE analysis_locks SET locked = false, completed_at = NOW()
-         WHERE resource_id = $1`,
-        [resourceId],
-      );
-    },
-
-    async releaseWithError(resourceId, error) {
-      await pool.query(
-        `UPDATE analysis_locks SET locked = false, error = $2, completed_at = NOW()
-         WHERE resource_id = $1`,
-        [resourceId, error],
-      );
-    },
-  };
-}
+return createSseStream(async (send) => {
+  send('progress', 'Working...');
+  send('complete', 'Done', { value: 42 });
+});
 ```
 
-## Event Types
+## Limitations
 
-| Type | When | `result` field |
-|------|------|---------------|
-| `progress` | During operation | Optional |
-| `complete` | Operation succeeded | Typically included |
-| `error` | Operation failed or lock rejected | Not included |
+- **Single-process in-memory lock** -- implement `LockManager` with Redis/Postgres for multi-server
+- **No TTL on locks** -- if the process dies without releasing, the lock is stuck (in-memory version)
+- **No retry headers** -- rejected requests get an error event, caller decides retry logic
+- **No backpressure** -- if the client reads slowly, events buffer in memory
+
+## See Also
+
+- [webhook-resume](https://github.com/protectyr-labs/webhook-resume) -- pause workflows and wait for human decisions
 
 ## License
 
