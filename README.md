@@ -42,6 +42,14 @@ export async function POST(request: Request) {
 - **LockManager interface** -- swap in Redis/Postgres for production; in-memory for dev
 - **Zero dependencies** -- pure TypeScript, works with any HTTP framework
 
+## Use Cases
+
+**AI analysis endpoints** -- User clicks "Analyze" which triggers a 60-second Claude call. Stream progress ("Loading data...", "Running analysis...") back to the UI. If they click again, reject the duplicate.
+
+**Report generation** -- Generate a complex report that takes 30+ seconds. Stream status updates. Lock prevents two reports being generated simultaneously for the same resource.
+
+**Background job monitoring** -- Long-running job starts via API. Client opens SSE connection to receive progress events. Lock ensures the job is not started twice.
+
 ## How It Works
 
 ```
