@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 220" width="1200" height="220">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#1e293b"/>
+    </linearGradient>
+    <linearGradient id="stream" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#38bdf8" stop-opacity="0.3"/>
+    </linearGradient>
+    <linearGradient id="lockGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#d97706"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="220" rx="8" fill="url(#bg)"/>
+
+  <!-- Subtle grid -->
+  <g opacity="0.04" stroke="#94a3b8" stroke-width="1">
+    <line x1="0" y1="44" x2="1200" y2="44"/>
+    <line x1="0" y1="88" x2="1200" y2="88"/>
+    <line x1="0" y1="132" x2="1200" y2="132"/>
+    <line x1="0" y1="176" x2="1200" y2="176"/>
+  </g>
+
+  <!-- Left side: Title block -->
+  <text x="48" y="78" font-family="'Segoe UI', system-ui, -apple-system, sans-serif" font-size="38" font-weight="700" fill="#f1f5f9" letter-spacing="-0.5">sse-lock</text>
+  <text x="48" y="110" font-family="'Segoe UI', system-ui, -apple-system, sans-serif" font-size="15" fill="#94a3b8" letter-spacing="0.3">SSE streaming with concurrency control</text>
+  <text x="48" y="148" font-family="'SF Mono', 'Cascadia Code', 'Consolas', monospace" font-size="12" fill="#64748b">npm install @protectyr-labs/sse-lock</text>
+
+  <!-- Divider line -->
+  <line x1="420" y1="36" x2="420" y2="184" stroke="#334155" stroke-width="1" opacity="0.5"/>
+
+  <!-- Right side: Architecture diagram -->
+
+  <!-- Client A (active) -->
+  <rect x="460" y="42" width="90" height="40" rx="6" fill="#1e3a5f" stroke="#38bdf8" stroke-width="1.5"/>
+  <text x="505" y="67" font-family="'SF Mono', monospace" font-size="12" fill="#38bdf8" text-anchor="middle">Client A</text>
+
+  <!-- Arrow: Client A -> Server (request) -->
+  <line x1="550" y1="62" x2="650" y2="62" stroke="#475569" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <polygon points="648,57 658,62 648,67" fill="#475569"/>
+  <text x="600" y="54" font-family="'SF Mono', monospace" font-size="9" fill="#64748b" text-anchor="middle">POST</text>
+
+  <!-- Server box -->
+  <rect x="660" y="30" width="160" height="64" rx="6" fill="#0f2940" stroke="#334155" stroke-width="1.5"/>
+  <text x="740" y="54" font-family="'SF Mono', monospace" font-size="11" fill="#e2e8f0" text-anchor="middle">Server</text>
+  <text x="740" y="72" font-family="'SF Mono', monospace" font-size="10" fill="#22c55e" text-anchor="middle">lock acquired</text>
+
+  <!-- SSE stream arrows back to Client A -->
+  <line x1="660" y1="78" x2="552" y2="78" stroke="url(#stream)" stroke-width="2"/>
+  <polygon points="554,73 544,78 554,83" fill="#38bdf8" opacity="0.8"/>
+  <text x="600" y="92" font-family="'SF Mono', monospace" font-size="9" fill="#38bdf8" text-anchor="middle" opacity="0.8">SSE events</text>
+
+  <!-- SSE event examples (flowing) -->
+  <g opacity="0.6">
+    <rect x="860" y="38" width="148" height="20" rx="3" fill="#1e3a5f"/>
+    <text x="870" y="52" font-family="'SF Mono', monospace" font-size="9" fill="#38bdf8">progress: Parsing...</text>
+    <rect x="860" y="62" width="148" height="20" rx="3" fill="#1e3a5f"/>
+    <text x="870" y="76" font-family="'SF Mono', monospace" font-size="9" fill="#38bdf8">progress: Analyzing...</text>
+  </g>
+
+  <!-- Separator between scenarios -->
+  <line x1="440" y1="115" x2="1040" y2="115" stroke="#334155" stroke-width="1" stroke-dasharray="2,4" opacity="0.4"/>
+
+  <!-- Client B (blocked) -->
+  <rect x="460" y="135" width="90" height="40" rx="6" fill="#3b1a1a" stroke="#ef4444" stroke-width="1.5" opacity="0.8"/>
+  <text x="505" y="160" font-family="'SF Mono', monospace" font-size="12" fill="#ef4444" text-anchor="middle">Client B</text>
+
+  <!-- Arrow: Client B -> Lock gate -->
+  <line x1="550" y1="155" x2="650" y2="155" stroke="#475569" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <polygon points="648,150 658,155 648,160" fill="#475569"/>
+  <text x="600" y="147" font-family="'SF Mono', monospace" font-size="9" fill="#64748b" text-anchor="middle">POST</text>
+
+  <!-- Lock gate -->
+  <rect x="660" y="130" width="160" height="50" rx="6" fill="#1a1208" stroke="#f59e0b" stroke-width="1.5" opacity="0.9"/>
+
+  <!-- Lock icon -->
+  <rect x="718" y="147" width="16" height="12" rx="2" fill="url(#lockGrad)"/>
+  <path d="M721,147 L721,142 A5,5 0 0,1 731,142 L731,147" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Lock text -->
+  <text x="740" y="173" font-family="'SF Mono', monospace" font-size="10" fill="#f59e0b" text-anchor="middle">LOCKED - rejected</text>
+
+  <!-- Rejected arrow back -->
+  <line x1="660" y1="168" x2="552" y2="168" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="3,3" opacity="0.6"/>
+  <polygon points="554,163 544,168 554,173" fill="#ef4444" opacity="0.6"/>
+  <text x="600" y="185" font-family="'SF Mono', monospace" font-size="9" fill="#ef4444" text-anchor="middle" opacity="0.7">error: in progress</text>
+
+  <!-- Rejected event box -->
+  <rect x="860" y="142" width="148" height="20" rx="3" fill="#3b1a1a" opacity="0.6"/>
+  <text x="870" y="156" font-family="'SF Mono', monospace" font-size="9" fill="#ef4444" opacity="0.8">error: already running</text>
+
+  <!-- Bottom accent line -->
+  <rect x="0" y="216" width="1200" height="4" rx="0" fill="#38bdf8" opacity="0.15"/>
+</svg>
